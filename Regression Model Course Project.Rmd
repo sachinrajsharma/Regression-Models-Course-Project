@@ -1,0 +1,256 @@
+---
+title: "Regression Model Course Project"
+author: "Sachin Sharma"
+date: "10/7/2021"
+output:
+  html_document: default
+  pdf_document: default
+  always_allow_html: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+
+```
+
+
+\textcolor{red}{\Huge \textbf{Brief Summary}}
+
+\textcolor{blue}{\LARGE In this report, we will examine the \textbf{mtcars} data set and explore how miles per gallon (MPG) is affected by different variables. As per the requiremnt of the project, we will answer the following two questions:}
+
+\begin{enumerate}
+
+\item Is an automatic or manual transmission better for MPG, and 
+
+\item  Quantify the MPG difference between automatic and manual transmissions.
+
+
+\end{enumerate}
+
+
+
+
+\textcolor{red}{\Huge \textbf{Exploratory Data Analysis}}
+
+
+\textcolor{red}{\LARGE STEP :1 - \textbf{Importing Libraries}}
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(naniar)
+library(dplyr)
+library(datasets)
+library(tinytex)
+library(DT)
+
+
+```
+
+
+\textcolor{red}{\Huge \textbf{Reading Data}}
+
+# Here we can use datatable, which is very useful to filter the data and see the quick results. However, I have separated the data in my next steps using separate codes. 
+
+```{r}
+
+data("mtcars")
+
+datatable(mtcars,rownames = FALSE,filter = "top")
+
+head(mtcars)
+
+
+
+```
+
+# Transform certain variables into factors
+
+```{r}
+
+mtcars$cyl  <- factor(mtcars$cyl)
+mtcars$am   <- factor(mtcars$am,labels=c("Automatic","Manual"))
+mtcars$vs   <- factor(mtcars$vs)
+mtcars$gear <- factor(mtcars$gear)
+mtcars$carb <- factor(mtcars$carb)
+
+
+
+
+
+
+
+```
+
+
+```{r}
+
+boxplot(mpg ~ am, data = mtcars, col = (c("purple","red")), ylab = "Miles Per Gallon", xlab = "Type of Transmission", main = "MPG Vs AM")
+
+
+```
+
+
+
+
+\textcolor{red}{\LARGE \textbf{Regression Analysis}}
+
+\textbf{\Large  With the help of plot, We’ve visually seen that automatic is better for MPG, but we will now quantify his difference}
+
+
+```{r}
+
+aggregate(mpg~am, data = mtcars, mean)
+
+
+
+
+
+
+```
+
+## Difference of MPG between Automatic and Manual 
+
+```{r}
+24.39231 - 17.14737
+
+```
+
+
+## Therefore, we can see that the Manual cars have an MPG of 7.245 (approx.) more than automatic cars 
+
+
+## We  can now use a t-test here 
+
+
+<h3 style="color:red" >What is t-test ? </h3>
+
+
+<h3  style="color:blue">The t-test assesses whether the means of two groups are statistically different from each other.This analysis is appropriate whenever you want to compare the means of two groups</h3>
+
+
+
+```{r}
+automatic_car <- mtcars[mtcars$am == "Automatic",]
+manual_car <- mtcars[mtcars$am == "Manual",]
+t.test(automatic_car$mpg, manual_car$mpg)
+
+
+```
+
+# We can see that the p-value is 0.001374, thus we can state this is a significant difference. Now to quantify this, we can use the following code : 
+
+
+
+```{r}
+
+model_1  <- lm(mpg ~ am, data = mtcars)
+summary(model_1)
+
+
+
+
+```
+<h3 style="color:blue"   > The above data shows us that the average MPG for automatic is 17.1 MPG, while manual is 7.2 MPG higher. The $R^2$ value is 0.36 which states that, this model only explains us 36% of the variance. As a result, here we require to build a multivariate linear regression.</h3>
+
+
+## Lets see with the help of corrplot , to check the correlation among the variables with mpg.
+
+## Before plotting the corrplot, we will check the structure of the data ;  
+
+```{r}
+
+
+df_1 <- subset(mtcars, select = c(mpg,cyl,disp,hp,drat,wt,qsec,vs))
+
+head(df_1)
+
+
+
+str(df_1)
+
+
+
+```
+
+# Here we can see that, cyl and vs columns are in factor, we will now convert this into numeric to plot corrplot and check the correlation. 
+
+
+```{r}
+
+df_1$cyl <- as.character(df_1$cyl) 
+
+df_1$cyl <- as.numeric(df_1$cyl)
+
+df_1$vs <- as.character(df_1$vs)
+
+df_1$vs <- as.numeric(df_1$vs)
+
+
+# Now we can check the structure of the data again 
+str(df_1)
+
+```
+
+# Now we can see that all the columns are in numeric, now we can plot wit the help of ggcorrplot and corrplot to check the correlation : 
+
+
+
+
+```{r}
+library(ggcorrplot)
+
+r <- cor(df_1)
+
+ggcorrplot(r,method = "circle", type = c("upper"), legend.title = "Corrplot MTCARS")
+
+```
+```{r}
+
+library(corrplot)
+r <- cor(df_1)
+
+
+corrplot(r, method = "circle")
+
+```
+
+<h3 style="color:blue" > With the help of above two plots, we can easily say that cyl,disp, hp and wt have strong correlation  with mpg </h3>
+
+<h3 style="color:blue" > We build a new model using these variables and compare them to the initial model with the anova function.</h3>
+
+```{r}
+model_2  <- lm(mpg~am + cyl + disp + hp + wt, data = mtcars)
+anova(model_1, model_2)
+
+```
+
+<h3 style="color:blue" > Here we can see that the result of p-value is 8.637e-08, and hence we can say that  our model_2 is significantly better than our model_1 which is a simple model.</h3>
+
+
+<h3 style="color:blue" > We can plot the graph to check the residuals for non - normality and see whether they are normally distributed or not. </h3>
+
+
+
+```{r}
+par(mfrow = c(2,2))
+plot(model_2)
+```
+
+# Now we will check the summary of our model_2 
+
+
+```{r}
+
+summary(model_2)
+```
+
+<h3 style="color:blue" >With the help of the above summary, we can say that model explain that there is a variance of 86.64% and as a result variables like cyl, disp, hp, wt did affect the correlation between mpg and am. </h3>
+
+
+<h3 style="color:blue" > Hence, we can say the difference between automatic and manual transmissions is 1.81 MPG </h3>
+
+
+
+
